@@ -30,6 +30,9 @@
                     <button class="btn btn-secondary" id="copyYesterdayBtn">Copy Yesterday</button>
                     <button class="btn btn-secondary" id="endDayBtn">End Day</button>
                     <button class="btn btn-secondary" id="weeklyAnalysisBtn">Weekly Analysis</button>
+                    <button class="btn btn-secondary" id="exportDataBtn">Export Data</button>
+                    <button class="btn btn-secondary" id="importDataBtn">Import Data</button>
+                    <button class="btn btn-secondary" id="syncGistBtn">☁️ Sync to Gist</button>
                 </div>
                 <div class="mini-calendar-container" id="miniCalendarContainer">
                     <!-- Mini calendar will be rendered here -->
@@ -102,6 +105,41 @@
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal for GitHub Gist setup -->
+    <div class="modal" id="gistSetupModal">
+        <div class="modal-content">
+            <span class="close" id="closeGistModal">&times;</span>
+            <h2>GitHub Gist Sync Setup</h2>
+            <p style="margin-bottom: 16px; color: rgba(55, 53, 47, 0.7); font-size: 14px;">
+                Sync your data to GitHub Gist for automatic backup and access across browsers/devices.
+            </p>
+            <form id="gistSetupForm">
+                <div class="form-group">
+                    <label for="githubToken">GitHub Personal Access Token</label>
+                    <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx" required>
+                    <small style="color: rgba(55, 53, 47, 0.6); font-size: 12px; margin-top: 4px; display: block;">
+                        <a href="https://github.com/settings/tokens" target="_blank" style="color: #667eea;">Create token here</a> 
+                        (needs <code>gist</code> permission)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="gistId">Gist ID (leave empty to create new)</label>
+                    <input type="text" id="gistId" placeholder="Optional: existing Gist ID">
+                    <small style="color: rgba(55, 53, 47, 0.6); font-size: 12px; margin-top: 4px; display: block;">
+                        If you already have a Gist, paste its ID here to use it
+                    </small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelGistBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save & Sync</button>
+                </div>
+            </form>
+            <div id="gistStatus" style="margin-top: 16px; padding: 12px; background: rgba(55, 53, 47, 0.03); border-radius: 3px; display: none;">
+                <div style="font-size: 13px; color: rgba(55, 53, 47, 0.8);" id="gistStatusText"></div>
+            </div>
         </div>
     </div>
 

@@ -28,16 +28,42 @@ const closeWeeklyModal = document.getElementById('closeWeeklyModal');
 const copyYesterdayBtn = document.getElementById('copyYesterdayBtn');
 const streakElement = document.getElementById('streak');
 const miniCalendarContainer = document.getElementById('miniCalendarContainer');
+const exportDataBtn = document.getElementById('exportDataBtn');
+const importDataBtn = document.getElementById('importDataBtn');
+const syncGistBtn = document.getElementById('syncGistBtn');
+const gistSetupModal = document.getElementById('gistSetupModal');
+const gistSetupForm = document.getElementById('gistSetupForm');
+const closeGistModal = document.getElementById('closeGistModal');
+const cancelGistBtn = document.getElementById('cancelGistBtn');
+const gistStatus = document.getElementById('gistStatus');
+const gistStatusText = document.getElementById('gistStatusText');
+
+// Gist configuration
+let gistConfig = {
+    token: localStorage.getItem('githubToken') || null,
+    gistId: localStorage.getItem('gistId') || null
+};
 
 // Initialize
 selectedDateInput.value = selectedDate;
-loadData();
-renderSchedule();
-updateScore();
-updateStreak();
-renderMiniCalendar();
-checkMissedSlots();
-setInterval(checkMissedSlots, 60000); // Check every minute
+
+// Load from Gist on startup if configured
+(async () => {
+    if (gistConfig.token && gistConfig.gistId) {
+        const loaded = await loadFromGist();
+        if (loaded) {
+            console.log('Data loaded from Gist');
+        }
+    }
+    
+    loadData();
+    renderSchedule();
+    updateScore();
+    updateStreak();
+    renderMiniCalendar();
+    checkMissedSlots();
+    setInterval(checkMissedSlots, 60000); // Check every minute
+})();
 
 // Event listeners
 addTimeSlotBtn.addEventListener('click', () => openModal());
@@ -54,6 +80,18 @@ cancelReflectionBtn.addEventListener('click', closeReflectionModalFunc);
 weeklyAnalysisBtn.addEventListener('click', openWeeklyAnalysis);
 closeWeeklyModal.addEventListener('click', closeWeeklyAnalysis);
 copyYesterdayBtn.addEventListener('click', copyYesterdaySchedule);
+exportDataBtn.addEventListener('click', exportData);
+importDataBtn.addEventListener('click', importData);
+syncGistBtn.addEventListener('click', () => {
+    if (gistConfig.token) {
+        syncToGist();
+    } else {
+        openGistSetup();
+    }
+});
+gistSetupForm.addEventListener('submit', handleGistSetup);
+closeGistModal.addEventListener('click', closeGistSetup);
+cancelGistBtn.addEventListener('click', closeGistSetup);
 
 // Close modal when clicking outside
 window.addEventListener('click', (e) => {
@@ -68,6 +106,9 @@ window.addEventListener('click', (e) => {
     }
     if (e.target === weeklyAnalysisModal) {
         closeWeeklyAnalysis();
+    }
+    if (e.target === gistSetupModal) {
+        closeGistSetup();
     }
 });
 
@@ -708,8 +749,242 @@ function selectDateFromCalendar(dateStr) {
     renderMiniCalendar();
 }
 
+function exportData() {
+    const allData = getAllData();
+    const dataStr = JSON.stringify(allData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `daily-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    alert('Data exported successfully! Save this file to import it in another browser.');
+}
+
+function importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                if (confirm('This will replace all your current data. Are you sure?')) {
+                    // Merge imported data with existing data
+                    const existingData = getAllData();
+                    const mergedData = { ...existingData, ...importedData };
+                    
+                    localStorage.setItem('dailyTracker', JSON.stringify(mergedData));
+                    
+                    // Reload current date's data
+                    loadData();
+                    renderSchedule();
+                    updateScore();
+                    updateStreak();
+                    renderMiniCalendar();
+                    
+                    alert('Data imported successfully!');
+                }
+            } catch (error) {
+                alert('Error importing data: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function openGistSetup() {
+    document.getElementById('githubToken').value = gistConfig.token || '';
+    document.getElementById('gistId').value = gistConfig.gistId || '';
+    gistStatus.style.display = 'none';
+    gistSetupModal.classList.add('show');
+}
+
+function closeGistSetup() {
+    gistSetupModal.classList.remove('show');
+    gistSetupForm.reset();
+}
+
+async function handleGistSetup(e) {
+    e.preventDefault();
+    const token = document.getElementById('githubToken').value.trim();
+    const gistId = document.getElementById('gistId').value.trim();
+    
+    if (!token) {
+        alert('Please enter a GitHub Personal Access Token');
+        return;
+    }
+    
+    gistConfig.token = token;
+    gistConfig.gistId = gistId || null;
+    
+    // Save to localStorage
+    localStorage.setItem('githubToken', token);
+    if (gistId) {
+        localStorage.setItem('gistId', gistId);
+    }
+    
+    gistStatus.style.display = 'block';
+    gistStatusText.textContent = 'Testing connection...';
+    gistStatusText.style.color = 'rgba(55, 53, 47, 0.8)';
+    
+    try {
+        // Test token and sync
+        await syncToGist();
+        gistStatusText.textContent = '✅ Connected! Data synced successfully.';
+        gistStatusText.style.color = '#27ae60';
+        setTimeout(() => {
+            closeGistSetup();
+        }, 1500);
+    } catch (error) {
+        gistStatusText.textContent = '❌ Error: ' + error.message;
+        gistStatusText.style.color = '#eb5757';
+    }
+}
+
+async function syncToGist() {
+    if (!gistConfig.token) {
+        openGistSetup();
+        return;
+    }
+    
+    const allData = getAllData();
+    const dataStr = JSON.stringify(allData, null, 2);
+    
+    const gistData = {
+        description: 'Daily Schedule Tracker - Auto-synced data',
+        public: false,
+        files: {
+            'daily-tracker-data.json': {
+                content: dataStr
+            }
+        }
+    };
+    
+    try {
+        let response;
+        
+        if (gistConfig.gistId) {
+            // Update existing Gist
+            response = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `token ${gistConfig.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gistData)
+            });
+        } else {
+            // Create new Gist
+            response = await fetch('https://api.github.com/gists', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${gistConfig.token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gistData)
+            });
+        }
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to sync to Gist');
+        }
+        
+        const result = await response.json();
+        
+        // Save Gist ID if it's new
+        if (!gistConfig.gistId && result.id) {
+            gistConfig.gistId = result.id;
+            localStorage.setItem('gistId', result.id);
+        }
+        
+        // Update button text
+        syncGistBtn.textContent = '☁️ Synced';
+        syncGistBtn.style.background = 'rgba(39, 174, 96, 0.1)';
+        syncGistBtn.style.borderColor = 'rgba(39, 174, 96, 0.3)';
+        syncGistBtn.style.color = '#27ae60';
+        
+        setTimeout(() => {
+            syncGistBtn.textContent = '☁️ Sync to Gist';
+            syncGistBtn.style.background = '';
+            syncGistBtn.style.borderColor = '';
+            syncGistBtn.style.color = '';
+        }, 2000);
+        
+        return result;
+    } catch (error) {
+        console.error('Gist sync error:', error);
+        throw error;
+    }
+}
+
+async function loadFromGist() {
+    if (!gistConfig.token || !gistConfig.gistId) {
+        return false;
+    }
+    
+    try {
+        const response = await fetch(`https://api.github.com/gists/${gistConfig.gistId}`, {
+            headers: {
+                'Authorization': `token ${gistConfig.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load from Gist');
+        }
+        
+        const gist = await response.json();
+        const file = gist.files['daily-tracker-data.json'];
+        
+        if (file && file.content) {
+            const importedData = JSON.parse(file.content);
+            
+            // Merge with existing data
+            const existingData = getAllData();
+            const mergedData = { ...existingData, ...importedData };
+            
+            localStorage.setItem('dailyTracker', JSON.stringify(mergedData));
+            
+            // Reload current date
+            loadData();
+            renderSchedule();
+            updateScore();
+            updateStreak();
+            renderMiniCalendar();
+            
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Gist load error:', error);
+        return false;
+    }
+}
+
 function saveData() {
     saveDataForDate(selectedDate);
+    
+    // Auto-sync to Gist if configured
+    if (gistConfig.token && gistConfig.gistId) {
+        syncToGist().catch(err => {
+            console.error('Auto-sync failed:', err);
+        });
+    }
 }
 
 function saveDataForDate(date) {
