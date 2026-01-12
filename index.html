@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Schedule Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Daily Schedule Tracker</h1>
+                <div class="header-top">
+                    <div class="date-picker-container">
+                        <label for="selectedDate">Date</label>
+                        <input type="date" id="selectedDate" class="date-input">
+                    </div>
+                    <div class="score-display">
+                        <span class="score-label">Score</span>
+                        <span class="score-value" id="score">0%</span>
+                    </div>
+                    <div class="streak-display">
+                        <span class="streak-label">🔥 Streak</span>
+                        <span class="streak-value" id="streak">0 days</span>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button class="btn btn-primary" id="addTimeSlotBtn">+ New</button>
+                    <button class="btn btn-secondary" id="copyYesterdayBtn">Copy Yesterday</button>
+                    <button class="btn btn-secondary" id="endDayBtn">End Day</button>
+                    <button class="btn btn-secondary" id="weeklyAnalysisBtn">Weekly Analysis</button>
+                </div>
+                <div class="mini-calendar-container" id="miniCalendarContainer">
+                    <!-- Mini calendar will be rendered here -->
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="schedule-container" id="scheduleContainer">
+                <!-- Time slots will be dynamically added here -->
+            </div>
+
+            <div class="empty-state" id="emptyState">
+                <p>No time slots yet. Click "New" to add one.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing time slots -->
+    <div class="modal" id="timeSlotModal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2 id="modalTitle">Add Time Slot</h2>
+            <form id="timeSlotForm">
+                <div class="form-group">
+                    <label for="startTime">Start Time:</label>
+                    <input type="time" id="startTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="endTime">End Time:</label>
+                    <input type="time" id="endTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskName">Task:</label>
+                    <input type="text" id="taskName" placeholder="e.g., Morning Exercise" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for end day confirmation -->
+    <div class="modal" id="endDayModal">
+        <div class="modal-content">
+            <h2>End Day Confirmation</h2>
+            <p>Are you sure you want to end the day? Tasks will be retained, but all completion status, scores, and reflections will be reset.</p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancelEndDayBtn">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmEndDayBtn">Yes, End Day</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for reflection/reason -->
+    <div class="modal" id="reflectionModal">
+        <div class="modal-content">
+            <span class="close" id="closeReflectionModal">&times;</span>
+            <h2>Why Not Done?</h2>
+            <p class="reflection-task-name" id="reflectionTaskName"></p>
+            <form id="reflectionForm">
+                <div class="form-group">
+                    <label for="reflectionText">Reflection</label>
+                    <textarea id="reflectionText" rows="4" placeholder="Why was this task not completed? What prevented you from doing it?" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelReflectionBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for weekly analysis -->
+    <div class="modal" id="weeklyAnalysisModal">
+        <div class="modal-content modal-large">
+            <span class="close" id="closeWeeklyModal">&times;</span>
+            <h2>Weekly Analysis</h2>
+            <div class="analysis-tabs">
+                <button class="tab-btn active" data-tab="partial">Partial Tasks</button>
+                <button class="tab-btn" data-tab="undone">Undone Tasks</button>
+                <button class="tab-btn" data-tab="missed">Missed Tasks</button>
+            </div>
+            <div class="analysis-content">
+                <div class="tab-content active" id="partialContent">
+                    <div class="analysis-list" id="partialList"></div>
+                </div>
+                <div class="tab-content" id="undoneContent">
+                    <div class="analysis-list" id="undoneList"></div>
+                </div>
+                <div class="tab-content" id="missedContent">
+                    <div class="analysis-list" id="missedList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
